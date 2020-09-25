@@ -53,6 +53,7 @@ import {
   createGetObject,
   createGetObjectsOfType,
   createSelector,
+  getCheckPermissions,
   isAdmin,
 } from 'selectors'
 
@@ -272,12 +273,28 @@ class VifAllowedIps extends BaseComponent {
   }
 }
 
+@connectStore(() => ({
+  checkPermissions: getCheckPermissions,
+  isAdmin,
+}))
 class VifStatus extends BaseComponent {
+  static propTypes = {
+    vm: PropTypes.object.isRequired,
+  }
+
   componentDidMount() {
     getLockingModeValues().then(lockingModeValues =>
       this.setState({ lockingModeValues })
     )
   }
+
+  _getCanEditVifLockingMode = createSelector(
+    () => this.props.isAdmin,
+    () => this.props.checkPermissions,
+    () => this.props.vm.id,
+    (isAdmin, checkPermissions, vmId) =>
+      isAdmin || checkPermissions(vmId, 'admin')
+  )
 
   _getIps = createSelector(
     () => this.props.vif.allowedIpv4Addresses || EMPTY_ARRAY,
@@ -355,6 +372,7 @@ class VifStatus extends BaseComponent {
   render() {
     const { vif } = this.props
     const { isLockingModeEdition } = this.state
+    const canEditVifLockingMode = this._getCanEditVifLockingMode()
 
     return (
       <div>
@@ -369,7 +387,7 @@ class VifStatus extends BaseComponent {
           state={vif.attached}
         />{' '}
         {this._getNetworkStatus()}{' '}
-        {isLockingModeEdition ? (
+        {canEditVifLockingMode && isLockingModeEdition ? (
           <select
             className='form-control'
             onBlur={this.toggleState('isLockingModeEdition')}
@@ -383,13 +401,15 @@ class VifStatus extends BaseComponent {
             ))}
           </select>
         ) : (
-          <ActionButton
-            btnStyle='primary'
-            icon='edit'
-            handler={this.toggleState('isLockingModeEdition')}
-            size='small'
-            tooltip={_('editVifLockingMode')}
-          />
+          canEditVifLockingMode && (
+            <ActionButton
+              btnStyle='primary'
+              icon='edit'
+              handler={this.toggleState('isLockingModeEdition')}
+              size='small'
+              tooltip={_('editVifLockingMode')}
+            />
+          )
         )}
       </div>
     )
@@ -746,8 +766,8 @@ const COLUMNS = [
     name: _('vifAclRules'),
   },
   {
-    itemRenderer: (vif, userData) => (
-      <VifStatus vif={vif} network={userData.networks[vif.$network]} />
+    itemRenderer: (vif, { networks, vm }) => (
+      <VifStatus vif={vif} network={networks[vif.$network]} vm={vm} />
     ),
     name: _('vifStatusLabel'),
   },
@@ -979,6 +999,7 @@ export default class TabNetwork extends BaseComponent {
               columns={COLUMNS}
               data-ipsByDevice={this._getIpsByDevice()}
               data-networks={networks}
+              data-vm={vm}
               filters={FILTERS}
               groupedActions={GROUPED_ACTIONS}
               individualActions={INDIVIDUAL_ACTIONS}
