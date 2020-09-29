@@ -66,13 +66,13 @@ export class PrivateNetwork {
     const pifVlan = otherConfig['xo:sdn-controller:vlan']
     const hostPif = hostClient.host.$PIFs.find(
       pif =>
-        pif.device === pifDevice &&
+        pif?.device === pifDevice &&
         pif.VLAN === +pifVlan &&
         pif.ip_configuration_mode !== 'None'
     )
     const centerPif = centerClient.host.$PIFs.find(
       pif =>
-        pif.device === pifDevice &&
+        pif?.device === pifDevice &&
         pif.VLAN === +pifVlan &&
         pif.ip_configuration_mode !== 'None'
     )
